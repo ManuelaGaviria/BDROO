@@ -120,6 +120,12 @@ END PKG_ASIGNACION_AUTOMATICA;
 -- Especificación del paquete
 CREATE OR REPLACE PACKAGE PKG_CLASES
 AS
+  FUNCTION estudiante_ya_programado(
+    p_fecha DATE,
+    p_hora NUMBER,
+    p_dni VARCHAR2
+  ) RETURN BOOLEAN;
+  
   FUNCTION agregar_estudiante_clase(
     p_fecha IN DATE,
     p_hora IN NUMBER,
@@ -138,6 +144,25 @@ END PKG_CLASES;
 
 CREATE OR REPLACE PACKAGE BODY PKG_CLASES
 AS
+  FUNCTION estudiante_ya_programado(
+    p_fecha DATE,
+    p_hora NUMBER,
+    p_dni VARCHAR2
+  ) RETURN BOOLEAN
+  IS
+    v_count NUMBER;
+  BEGIN
+  --Ahora las tres operaciones son sobre cp
+    SELECT COUNT(*)
+    INTO v_count
+    FROM CLASES_PROGRAMADAS cp
+    WHERE cp.PROGRAMACION.FECHA = p_fecha
+      AND cp.PROGRAMACION.HORA = p_hora
+      AND cp.DNI_EST = p_dni;
+
+    RETURN v_count > 0;
+  END estudiante_ya_programado;
+
   FUNCTION agregar_estudiante_clase(
     p_fecha IN DATE,
     p_hora IN NUMBER,
@@ -222,25 +247,31 @@ AS
   IS
     v_success BOOLEAN;
   BEGIN
+    -- Llamada a la función para verificar si el estudiante ya está programado
+    IF estudiante_ya_programado(p_fecha, p_hora, p_dni) THEN
+      RAISE_APPLICATION_ERROR(-20003, 'El estudiante ya tiene una clase programada en esta fecha y hora.');
+    END IF;
+
     -- Llamar a la función agregar_estudiante_clase
     v_success := agregar_estudiante_clase(p_fecha, p_hora, p_dni);
 
     IF v_success THEN
-        -- Insertar en clases programadas
-        INSERT INTO CLASES_PROGRAMADAS (
-            DNI_EST, PROGRAMACION, CODIGO_CLASE, ESTADO_CLASE_PROG
-        ) VALUES (
-            p_dni,
-            PROGRAMACION_OBJ(
-                p_fecha, -- Fecha de programación
-                p_hora, -- Código de la hora (número)
-                1  -- Nivel (código del nivel)
-            ),
-            p_clase,
-            p_estado_clase
-        );
-        PKG_AUDITORIA.log_audit_action('CLASES_PROGRAMADAS', 'INSERT', p_dni , 'Se creo una nueva clase programada y se asignó el estudiante ' || p_dni);
-        COMMIT;
+
+      -- Insertar en clases programadas
+      INSERT INTO CLASES_PROGRAMADAS (
+          DNI_EST, PROGRAMACION, CODIGO_CLASE, ESTADO_CLASE_PROG
+      ) VALUES (
+          p_dni,
+          PROGRAMACION_OBJ(
+              p_fecha, -- Fecha de programación
+              p_hora, -- Código de la hora (número)
+              1  -- Nivel (código del nivel)
+          ),
+          p_clase,
+          p_estado_clase
+      );
+
+      COMMIT;
     ELSE
         RAISE_APPLICATION_ERROR(-20004, 'No se pudo registrar la clase programada, no hay cupos para esa fecha y hora');
     END IF;
