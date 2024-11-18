@@ -24,7 +24,7 @@ BEGIN
     BEGIN
       UPDATE NOTAS
       SET PROMEDIO = v_promedio,
-          ESTADO = CASE WHEN v_promedio > 4.0 THEN 1 ELSE 2 END
+          ESTADO = CASE WHEN v_promedio >= 4.0 THEN 1 ELSE 2 END
       WHERE ID_EXAMEN = TREAT(:NEW.ORAL AS EXAM_PRESENTADO_OBJ).ID_EXAMEN AND DNI_ESTUDIANTE= (TREAT(:NEW.ORAL AS EXAM_PRESENTADO_OBJ).DNI_EST);
     EXCEPTION
       WHEN OTHERS THEN
@@ -45,6 +45,29 @@ BEGIN
 END;
 /
 
+--------------------------------------------------------------------------------------
+CREATE OR REPLACE TRIGGER trg_nota_examen_escrito_presentado
+BEFORE INSERT ON EXAMEN_ESCRITO_PRESENTADO
+FOR EACH ROW
+DECLARE
+  v_nota_calculada NUMBER;
+BEGIN
+    -- Calcular la nota a partir de los aciertos
+  BEGIN
+    v_nota_calculada := PKG_UTILIDADES.calcular_nota(:NEW.CANT_ACIERTO);
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR(-20002, 'Error al calcular la nota desde los aciertos: ' || SQLERRM);
+  END;
+  
+  :NEW.ESCRITO := EXAM_PRESENTADO_OBJ(
+    TREAT(:NEW.ESCRITO AS EXAM_PRESENTADO_OBJ).ID_EXAMEN,
+    TREAT(:NEW.ESCRITO AS EXAM_PRESENTADO_OBJ).DNI_EST,
+    v_nota_calculada, -- Asignar la nota calculada
+    TREAT(:NEW.ESCRITO AS EXAM_PRESENTADO_OBJ).FECHA
+  );
+END;
+/
 ---------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_examen_escrito_presentado
 AFTER INSERT ON EXAMEN_ESCRITO_PRESENTADO
@@ -55,7 +78,6 @@ DECLARE
   v_promedio NUMBER;
   v_nota_calculada NUMBER;
 BEGIN
-
   -- Calcular la nota a partir de los aciertos
   BEGIN
     v_nota_calculada := PKG_UTILIDADES.calcular_nota(:NEW.CANT_ACIERTO);
@@ -84,7 +106,7 @@ BEGIN
     BEGIN
       UPDATE NOTAS
       SET PROMEDIO = v_promedio,
-          ESTADO = CASE WHEN v_promedio > 4.0 THEN 1 ELSE 2 END
+          ESTADO = CASE WHEN v_promedio >= 4.0 THEN 1 ELSE 2 END
       WHERE ID_EXAMEN = TREAT(:NEW.ESCRITO AS EXAM_PRESENTADO_OBJ).ID_EXAMEN AND DNI_ESTUDIANTE = TREAT(:NEW.ESCRITO AS EXAM_PRESENTADO_OBJ).DNI_EST;
     EXCEPTION
       WHEN OTHERS THEN
@@ -104,4 +126,3 @@ BEGIN
   END;
 END;
 /
-
