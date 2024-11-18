@@ -123,7 +123,8 @@ AS
   FUNCTION estudiante_ya_programado(
     p_fecha DATE,
     p_hora NUMBER,
-    p_dni VARCHAR2
+    p_dni VARCHAR2,
+    p_clase VARCHAR2
   ) RETURN BOOLEAN;
   
   FUNCTION agregar_estudiante_clase(
@@ -147,7 +148,8 @@ AS
   FUNCTION estudiante_ya_programado(
     p_fecha DATE,
     p_hora NUMBER,
-    p_dni VARCHAR2
+    p_dni VARCHAR2,
+    p_clase VARCHAR2
   ) RETURN BOOLEAN
   IS
     v_count NUMBER;
@@ -156,9 +158,8 @@ AS
     SELECT COUNT(*)
     INTO v_count
     FROM CLASES_PROGRAMADAS cp
-    WHERE cp.PROGRAMACION.FECHA = p_fecha
-      AND cp.PROGRAMACION.HORA = p_hora
-      AND cp.DNI_EST = p_dni;
+    WHERE (cp.PROGRAMACION.FECHA = p_fecha AND cp.PROGRAMACION.HORA = p_hora AND cp.DNI_EST = p_dni)
+      OR (cp.CODIGO_CLASE = p_clase AND cp.DNI_EST = p_dni);
 
     RETURN v_count > 0;
   END estudiante_ya_programado;
@@ -248,7 +249,7 @@ AS
     v_success BOOLEAN;
   BEGIN
     -- Llamada a la función para verificar si el estudiante ya está programado
-    IF estudiante_ya_programado(p_fecha, p_hora, p_dni) THEN
+    IF estudiante_ya_programado(p_fecha, p_hora, p_dni, p_clase) THEN
       RAISE_APPLICATION_ERROR(-20003, 'El estudiante ya tiene una clase programada en esta fecha y hora.');
     END IF;
 
