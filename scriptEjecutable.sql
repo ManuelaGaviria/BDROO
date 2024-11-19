@@ -1,3 +1,5 @@
+-- Ir al archivo del tablespace para ejecutarlo -> tablespace.sql
+
 start C:\Users\ASUS\Documents\GitHub\BDROO\drop.sql;
 start C:\Users\ASUS\Documents\GitHub\BDROO\sequences.sql;
 start C:\Users\ASUS\Documents\GitHub\BDROO\createType.sql
